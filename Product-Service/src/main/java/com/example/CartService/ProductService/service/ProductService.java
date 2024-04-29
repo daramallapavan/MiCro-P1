@@ -14,4 +14,6 @@ public interface ProductService {
     Product getProductByProductName(String productName);
 
     String updateProduct(ProductUpdateDto productUpdateDto);
+
+    String delete();
 }
