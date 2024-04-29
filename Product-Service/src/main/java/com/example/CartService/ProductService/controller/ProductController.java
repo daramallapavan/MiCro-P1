@@ -42,4 +42,9 @@ public class ProductController {
     public String delete(){
         return productService.delete();
     }
+
+    @DeleteMapping("/deleteByProductName")
+    public String delete(@RequestParam String productName){
+        return productService.deleteByProduct(productName);
+    }
 }
