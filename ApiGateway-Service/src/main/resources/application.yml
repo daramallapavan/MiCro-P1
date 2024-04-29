@@ -1,0 +1,38 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+      - id: Product-Service
+        uri: lb://Product-Service
+        predicates:
+           - Path=/product/**
+        filters:
+           - AuthenticationFilter
+
+      - id: Cart-Service
+        uri: lb://CART-SERVICE
+        predicates:
+          - Path=/cart/**
+        filters:
+          - AuthenticationFilter
+
+      - id: Payment-Service
+        uri: lb://PAYMENT-SERVICE
+        predicates:
+          - Path=/payment/**
+        filters:
+          - AuthenticationFilter
+
+      - id: Order-Service
+        uri: lb://ORDER-SERVICE
+        predicates:
+          - Path=/order/**
+        filters:
+          - AuthenticationFilter
+
+      - id: User-Service
+        uri: lb://USER-SERVICE
+        predicates:
+          - Path=/user/**
+
+

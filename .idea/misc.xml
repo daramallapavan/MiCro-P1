@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/Cart-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/Order-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/Stock-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/Payment-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/Product-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/Eureka-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/Delivery-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/ApiGateway-Service/pom.xml" />
+        <option value="$PROJECT_DIR$/User-Service/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_18" default="true" project-jdk-name="18" project-jdk-type="JavaSDK" />
+</project>
