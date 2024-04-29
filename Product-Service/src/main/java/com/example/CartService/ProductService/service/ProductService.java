@@ -16,4 +16,6 @@ public interface ProductService {
     String updateProduct(ProductUpdateDto productUpdateDto);
 
     String delete();
+
+    String deleteByProduct(String productName);
 }
