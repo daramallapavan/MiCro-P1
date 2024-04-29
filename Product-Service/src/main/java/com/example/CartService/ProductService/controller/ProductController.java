@@ -38,4 +38,8 @@ public class ProductController {
     public String updateProduct(@RequestBody ProductUpdateDto productUpdateDto){
         return productService.updateProduct(productUpdateDto);
     }
+    @DeleteMapping("/delete")
+    public String delete(){
+        return productService.delete();
+    }
 }

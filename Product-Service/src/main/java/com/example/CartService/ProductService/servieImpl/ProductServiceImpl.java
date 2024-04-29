@@ -91,4 +91,10 @@ public class ProductServiceImpl implements ProductService {
             return "product updated "+productUpdateDto.getProductName()+" "+savedProduct.getQuantity();
 
     }
+
+    @Override
+    public String delete() {
+        productRepository.deleteAll();
+        return "deleted";
+    }
 }
