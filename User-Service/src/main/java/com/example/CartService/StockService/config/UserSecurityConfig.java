@@ -26,7 +26,7 @@ public class UserSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
        return httpSecurity.csrf(c->c.disable())
                 .authorizeHttpRequests(auth->auth.
-                        requestMatchers( "/user/register","/user/login","/user/validToken","/user/log" ).permitAll())
+                        requestMatchers( "/user/register","/user/login","/user/validToken","/user/loginEasy" ).permitAll())
                 .build();
     }
     @Bean

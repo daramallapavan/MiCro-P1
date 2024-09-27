@@ -1,5 +1,6 @@
 package com.example.CartService.StockService.serviceImpl;
 
+import com.example.CartService.StockService.cartservice.CartServiceApi;
 import com.example.CartService.StockService.config.CustomUserDetailsServiceImpl;
 import com.example.CartService.StockService.dto.UserRequest;
 import com.example.CartService.StockService.entity.User;
@@ -7,12 +8,10 @@ import com.example.CartService.StockService.exception.UserNotFoundException;
 import com.example.CartService.StockService.repository.UserRepository;
 import com.example.CartService.StockService.service.UserService;
 import com.example.CartService.StockService.util.JwtUtil;
-import io.jsonwebtoken.security.SignatureException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -35,11 +34,17 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private CartServiceApi cartServiceApi;
+
     @Override
     public String createUser(User user) {
         user.setPassword(passwordEncoder.encode( user.getPassword() )  );
         userRepository.save( user );
 
+
+        cartServiceApi.createCart( user.getEmail() );
 
         return "user registered successfully";
     }
@@ -56,6 +61,10 @@ public class UserServiceImpl implements UserService {
 
             if (authenticate.isAuthenticated()) {
                  token = jwtUtil.GenerateToken( userRequest.getEmail() );
+
+                String name = jwtUtil.extractUsername( token );
+
+                System.out.println(name);
 
             }
         }catch (Exception e) {
@@ -83,6 +92,31 @@ public class UserServiceImpl implements UserService {
 
     }
 
+    @Override
+    public User validateLoginGetUserObject(UserRequest userRequest) {
+        try {
+            Authentication authenticate = authenticationManager.authenticate
+                    ( new UsernamePasswordAuthenticationToken( userRequest.getEmail(), userRequest.getPassword() ) );
+
+            if (authenticate.isAuthenticated()) {
+
+                Optional<User> byEmail = userRepository.findByEmail( userRequest.getEmail() );
+                if (byEmail.isPresent()){
+                    User user=byEmail.get();
+                    return user;
+                }
+
+
+            }
+        }catch (Exception e) {
+            throw new UserNotFoundException( "Failed to login,Incorrect Password" );
+
+
+        }
+
+
+        return null;
+    }
 
 
 }

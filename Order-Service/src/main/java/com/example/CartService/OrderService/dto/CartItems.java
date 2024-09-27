@@ -23,6 +23,8 @@ public class CartItems {
     private int quantity;
     private double price;
 
+    private String imageUrl;
+
     private double productTotalPrice;
 
 

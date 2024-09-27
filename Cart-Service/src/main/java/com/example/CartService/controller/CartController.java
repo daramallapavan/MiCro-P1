@@ -1,16 +1,21 @@
 package com.example.CartService.controller;
 
 import com.example.CartService.config.CartServiceConfig;
-import com.example.CartService.dto.AddToCartDto;
-import com.example.CartService.dto.ProductDto;
+import com.example.CartService.dto.*;
 import com.example.CartService.entity.Cart;
+import com.example.CartService.entity.CartItems;
 import com.example.CartService.exception.CartException;
 import com.example.CartService.service.CartService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/cart")
+@CrossOrigin("*")
 public class CartController {
 
     @Autowired
@@ -25,14 +30,20 @@ public class CartController {
     }
 
     @PostMapping("/create")
-    public String cart(@RequestHeader("email") String email){
+    public String cart(@RequestParam String email){
         cartService.createCart( email );
         return "cart is created";
     }
 
+    @DeleteMapping("/deleteCartItem")
+    public ResponseEntity<DeleteCartItemResponse> deleteCartItem(@RequestParam Long cartItemId){
+        String s = cartService.deleteCartItem( cartItemId );
+        return new ResponseEntity<>(  new DeleteCartItemResponse(s),HttpStatus.OK );
+    }
+
 
     @GetMapping("/getCart")
-    public Cart getCartByUserId(@RequestParam String email) throws CartException {
+    public Cart getCartByUserId(@RequestHeader("email") String email) throws CartException {
         return cartService.getCartByUserId(email);
     }
 
@@ -41,11 +52,40 @@ public class CartController {
         return cartService.addToCart(addToCartDto,userId);
     }
     @PostMapping("/addToCartNew")
-    public String addToCartNew(@RequestBody AddToCartDto addToCartDto,@RequestParam String email)  {
+    public String addToCartNew(@RequestBody AddToCartDto addToCartDto,@RequestHeader("email") String email)  {
         return cartService.addToCartTo(addToCartDto,email);
     }
 
+    @PostMapping(name = "/addProductToCart/{productId}")
+    public String addToCartNew(@PathVariable Long productId,
+                               @RequestHeader("email") String email)  {
+        return cartService.addProductsToCart(productId,email);
+    }
+    @PostMapping("/addToCartParam")
+    public ResponseEntity<AddToCartDtoResponse> addToCartParams(@RequestParam String productName,
+                                                                @RequestHeader("email") String email)  {
+        String response = cartService.addToCartWithParams( productName, email );
 
+        AddToCartDtoResponse build = AddToCartDtoResponse.builder()
+                .response( response )
+                .responseTypeStatus( true )
+                .build();
+        return new ResponseEntity<>( build, HttpStatus.CREATED );
+    }
+
+
+    @PostMapping("/addToCartParamWithQuantity")
+    public ResponseEntity<AddToCartDtoResponse> addToCartParamsWithQuantity(@RequestParam String productName,
+                                                                            @RequestHeader("email") String email,
+                                                                            @RequestParam int quantity)  {
+        String response = cartService.addToCartWithParams( productName,quantity,email );
+
+        AddToCartDtoResponse build = AddToCartDtoResponse.builder()
+                .response( response )
+                .responseTypeStatus( true )
+                .build();
+        return new ResponseEntity<>( build, HttpStatus.CREATED );
+    }
     @DeleteMapping("/deleteCartItems")
     public String clearCartItems(){
         cartService.clearCartItems();
@@ -54,11 +94,20 @@ public class CartController {
     }
 
     @DeleteMapping("/clear")
-    public String clearCartItemsByEmail(@RequestParam String email){
+    public String clearCartItemsByEmail(@RequestHeader("email") String email){
         return cartService.clearCartByEmailId( email );
 
     }
 
+    @GetMapping("/cartItems")
+    public List<CartItems> listOfCartItems(@RequestHeader("email") String email){
+        return cartService.listOfItems(email);
+    }
 
+
+    @GetMapping("/priceDetails")
+    public CartPriceDetails priceDetails(@RequestParam String email){
+      return   cartService.priceDetails( email );
+    }
 
 }

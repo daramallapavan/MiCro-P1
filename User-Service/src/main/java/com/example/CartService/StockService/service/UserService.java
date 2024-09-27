@@ -14,4 +14,5 @@ public interface UserService {
     void validToken(String token);
 
 
+    User validateLoginGetUserObject(UserRequest userRequest);
 }

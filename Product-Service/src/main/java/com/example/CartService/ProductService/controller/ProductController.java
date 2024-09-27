@@ -11,13 +11,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/product")
+@CrossOrigin("*")
 public class ProductController {
 
     @Autowired
     private ProductService productService;
 
     @PostMapping("/createProduct")
-    public String createProduct(@RequestBody ProductDto productDto){
+    public Product createProduct(@RequestBody ProductDto productDto){
         return productService.createProduct(productDto);
     }
 
@@ -28,12 +29,23 @@ public class ProductController {
         return productService.getAllProducts();
     }
 
+    @GetMapping("/productListSort")
+    public List<Product> listOfProducts(@RequestParam String field)  {
+
+        //  System.out.println("email from token................ "+email);
+        return productService.getAllProducts(field);
+    }
+
 
     @GetMapping("/getProduct")
     public Product getProductByProductName(@RequestParam String productName){
         return productService.getProductByProductName(productName);
     }
 
+    @GetMapping("/getProductById/{productId}")
+    public Product getProductByProductName(@PathVariable Long productId){
+        return productService.getProductByProductId(productId);
+    }
     @PutMapping("/update")
     public String updateProduct(@RequestBody ProductUpdateDto productUpdateDto){
         return productService.updateProduct(productUpdateDto);

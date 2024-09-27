@@ -1,8 +1,6 @@
 package com.example.CartService.OrderService.serviceImpl;
 
-import com.example.CartService.OrderService.dto.Cart;
-import com.example.CartService.OrderService.dto.CartItems;
-import com.example.CartService.OrderService.dto.PaymentDto;
+import com.example.CartService.OrderService.dto.*;
 import com.example.CartService.OrderService.entity.Orders;
 import com.example.CartService.OrderService.entity.OrdersItems;
 import com.example.CartService.OrderService.entity.ShippingAddress;
@@ -11,19 +9,25 @@ import com.example.CartService.OrderService.repositoty.OrderItemRepository;
 import com.example.CartService.OrderService.repositoty.OrderRepository;
 import com.example.CartService.OrderService.repositoty.ShippingAddressRepository;
 import com.example.CartService.OrderService.service.OrderService;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.coyote.http11.filters.IdentityOutputFilter;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -37,19 +41,31 @@ public class OrderServiceImpl implements OrderService {
 
     private ShippingAddressRepository shippingAddressRepository;
 
+    private Cache<String,List<Orders>> ordersListCache;
+
+
+    @PostConstruct
+    public void init(){
+        ordersListCache= Caffeine.newBuilder()
+                .maximumSize(100 )
+                .build();
+    }
+
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
                             RestTemplate restTemplate,
                             ShippingAddressRepository shippingAddressRepository
+
                             ){
         this.orderRepository=orderRepository;
         this.orderItemRepository=orderItemRepository;
         this.restTemplate=restTemplate;
         this.shippingAddressRepository=shippingAddressRepository;
+
     }
     @SneakyThrows
     @Override
-    public String placeOrder(ShippingAddress shippingAddress,String email) {
+    public Orders placeOrder(ShippingAddress shippingAddress,String email) {
         List<CartItems> cartItems=null;
         try{
 
@@ -72,8 +88,10 @@ public class OrderServiceImpl implements OrderService {
 
             ordersItems.setPrice( cartItem.getPrice() );
             ordersItems.setQuantity( cartItem.getQuantity() );
+            ordersItems.setImageUrl(cartItem.getImageUrl() );
             ordersItems.setItemTotalPrice( cartItem.getProductTotalPrice() );
             ordersItems.setProductName( cartItem.getProductName() );
+
 
             ordersItems.setEmail( email );
             OrdersItems savedOrderItems = orderItemRepository.save( ordersItems );
@@ -84,17 +102,26 @@ public class OrderServiceImpl implements OrderService {
 
         Orders order=new Orders();
 
+        LocalDateTime localDateTime=LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE MMM dd");
+
+        LocalDateTime deliveryLocalDateTime=localDateTime.plusDays( 3 );
+        String deliveryBy = deliveryLocalDateTime.format( formatter );
+
         order.setOrderNumber( UUID.randomUUID().toString() );
         order.setStatus( "CREATED" );
         order.setEmail( email );
+        order.setOrdersItemsList( ordersItemsList );
         order.setPaymentStatus( "FAILED" );
         order.setTotalOrderPrice( totalOrderAmount );
+        order.setCreatedAt( localDateTime);
+        order.setDeliveryBy( deliveryBy );
         order.setTotalItems( cartItems.size() );
 
         Orders savedOrder = orderRepository.save( order );
 
         shippingAddress.setOrders( savedOrder );
-
+        shippingAddress.setEmail( email );
         shippingAddressRepository.save( shippingAddress );
 
 
@@ -105,16 +132,42 @@ public class OrderServiceImpl implements OrderService {
 
         restTemplate.delete( "http://CART-SERVICE/cart/clear?email="+email );
 
-
-        return "order created successfully "+savedOrder.getOrderNumber() ;
+ordersListCache.invalidate( "ordersList" );
+        return savedOrder ;
     }
+
+
 
     @Override
     public List<Orders> getUserOrders(String email) {
 
+        if (ordersListCache.getIfPresent( "ordersList" )!=null){
+            List<Orders> ordersListFromCache = ordersListCache.getIfPresent( "ordersList" );
 
 
-        return orderRepository.findByEmail(email);
+            String cacheEmail = ordersListFromCache.stream().map( o -> o.getEmail() ).findFirst().get();
+
+            System.out.println("email "+cacheEmail);
+            if (cacheEmail.equals( email )){
+                System.out.println("data from cache");
+                return ordersListFromCache;
+            }
+
+
+
+
+
+
+        }
+
+       List<Orders> ordersList=orderRepository.findByEmail(email);
+        if (ordersList.size()!=0){
+            ordersListCache.put( "ordersList", ordersList);
+        }
+
+
+        System.out.println("getting from database..........................................");
+        return ordersList;
     }
 
     @Override
@@ -140,6 +193,7 @@ public class OrderServiceImpl implements OrderService {
             throw new OrderException( "order not exist with this "+orderNumber );
         }
         orderRepository.deleteById( order.get().getId() );
+        ordersListCache.invalidate( "ordersList" );
         return "order deleted successfully";
     }
 
@@ -181,6 +235,87 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.save( order );
 
         return "updated order";
+    }
+
+    @SneakyThrows
+    @Override
+    public Set<ShippingAddressResponseDto> getListOfShippingAddress(String email) {
+
+        List<ShippingAddress> shippingAddressList = shippingAddressRepository.findByEmail( email );
+
+        Set<ShippingAddressResponseDto> responseList= shippingAddressList.stream().map( s -> entityToDto( s ) ).collect( Collectors.toSet() );
+
+        if (shippingAddressList.isEmpty()){
+            throw new OrderException( "not exist" );
+        }
+
+        return responseList;
+    }
+
+    @Override
+    public Orders createOrderWithSingleProduct(String productName, String email,ShippingAddress shippingAddress) {
+
+        List<OrdersItems> ordersItemsList=new ArrayList<>();
+
+        ProductDto product = restTemplate.
+                getForObject( "http://PRODUCT-SERVICE/product/getProduct?productName=" + productName, ProductDto.class );
+
+
+
+        OrdersItems ordersItem=new OrdersItems();
+        ordersItem.setProductName( product.getProductName() );
+        ordersItem.setPrice( product.getPrice() );
+        ordersItem.setQuantity( 1 );
+        ordersItem.setEmail( email );
+        ordersItem.setItemTotalPrice( product.getPrice()*1);
+
+        OrdersItems savedOrderItem = orderItemRepository.save( ordersItem );
+
+
+        ordersItemsList.add( savedOrderItem );
+
+
+        Orders order=new Orders();
+
+        order.setOrderNumber( UUID.randomUUID().toString() );
+        order.setStatus( "CREATED" );
+        order.setEmail( email );
+        order.setOrdersItemsList( ordersItemsList );
+        order.setPaymentStatus( "FAILED" );
+
+        order.setTotalOrderPrice( ordersItem.getItemTotalPrice() );
+        order.setTotalItems( ordersItemsList.size() );
+
+
+        Orders savedOrder = orderRepository.save( order );
+
+        shippingAddress.setOrders( savedOrder );
+        shippingAddress.setEmail( email );
+        ShippingAddress savedShipping = shippingAddressRepository.save( shippingAddress );
+
+        for (OrdersItems ordersItems:ordersItemsList){
+            ordersItems.setOrders( savedOrder );
+            orderItemRepository.save( ordersItems );
+        }
+
+
+       savedOrder.setShippingAddress(  savedShipping);
+        ordersListCache.invalidate( "ordersList" );
+        return savedOrder ;
+
+
+    }
+
+    private ShippingAddressResponseDto entityToDto(ShippingAddress shippingAddress) {
+        ShippingAddressResponseDto response=new ShippingAddressResponseDto();
+        response.setName( shippingAddress.getName() );
+        response.setCity( shippingAddress.getCity() );
+        response.setAddressLine1( shippingAddress.getAddressLine1() );
+        response.setAddressLine2( shippingAddress.getAddressLine2() );
+        response.setPhoneNumber( shippingAddress.getPhoneNumber() );
+        response.setLandMark( shippingAddress.getLandMark() );
+        response.setPinCode( shippingAddress.getPinCode() );
+        return response;
     }
 
 

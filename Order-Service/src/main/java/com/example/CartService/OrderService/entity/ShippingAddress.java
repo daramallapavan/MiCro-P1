@@ -15,11 +15,22 @@ public class ShippingAddress {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String street;
+
+    private String name;
 
     private String city;
 
-    private String state;
+    private String pinCode;
+
+    private String phoneNumber;
+
+    private String addressLine1;
+
+    private String addressLine2;
+
+    private String landMark;
+
+    private String email;
 
     @OneToOne
     @JoinColumn(name = "order_id",nullable = false)
