@@ -32,5 +32,7 @@ public interface CartItemRepository extends JpaRepository<CartItems,Long> {
                                        @Param( "productName" ) String productName);
     List<CartItems> findByEmail(String email);
 
-    void deleteByEmail(String email);
+
+
+    CartItems findByCartItemId(Long cartItemId);
 }

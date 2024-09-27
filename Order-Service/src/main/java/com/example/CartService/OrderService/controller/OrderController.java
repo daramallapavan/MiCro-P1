@@ -1,15 +1,21 @@
 package com.example.CartService.OrderService.controller;
 
+import com.example.CartService.OrderService.dto.DeleteOrderResponseDto;
+import com.example.CartService.OrderService.dto.ShippingAddressResponseDto;
 import com.example.CartService.OrderService.entity.Orders;
 import com.example.CartService.OrderService.entity.ShippingAddress;
 import com.example.CartService.OrderService.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/order")
+@CrossOrigin("*")
 public class OrderController {
 
     @Autowired
@@ -19,10 +25,22 @@ public class OrderController {
     public List<Orders> getUserOrders(@RequestParam String email){
         return orderService.getUserOrders(email);
     }
+
     @PostMapping("/createOrder")
-    public String placeOrder(@RequestBody ShippingAddress shippingAddress, @RequestParam String email){
+    public Orders placeOrder(@RequestBody ShippingAddress shippingAddress, @RequestParam String email){
         return orderService.placeOrder(shippingAddress,email);
     }
+
+
+    @PostMapping("/createOrderWithSingleProduct")
+    public Orders createOrderWithSingleProduct(@RequestBody ShippingAddress shippingAddress,@RequestParam String email,@RequestParam String productName){
+
+        return orderService.createOrderWithSingleProduct(productName,email,shippingAddress);
+    }
+
+
+
+
 
     @GetMapping("/getOrderByOrderNumber")
     public Orders getOrderByOrderNumber(@RequestParam String orderNumber){
@@ -30,8 +48,10 @@ public class OrderController {
     }
 
     @DeleteMapping("/removeOrder")
-    public String deleteOrder(@RequestParam String orderNumber){
-        return  orderService.deleteOrder(orderNumber);
+    public ResponseEntity<DeleteOrderResponseDto> deleteOrder(@RequestParam String orderNumber){
+        String s=  orderService.deleteOrder(orderNumber);
+
+        return new ResponseEntity<>( new DeleteOrderResponseDto( s), HttpStatus.OK );
 
     }
 
@@ -40,6 +60,11 @@ public class OrderController {
         return orderService.changeToOrderPlaced(orderNumber);
 
 
+    }
+
+    @GetMapping("/shippingAddresses")
+    public Set<ShippingAddressResponseDto> shippingAddresses(@RequestParam String email){
+        return orderService.getListOfShippingAddress(email);
     }
 
 

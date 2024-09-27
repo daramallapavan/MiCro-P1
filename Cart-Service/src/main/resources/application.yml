@@ -1,4 +1,10 @@
 spring:
+  zipkin:
+    base-url: http://127.0.0.1:9411/
+
+
+
+
   datasource:
     url: jdbc:mysql://localhost:3306/ECom_Cart
     username: root
@@ -8,6 +14,7 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: update
+
 
 
 management:
@@ -37,3 +44,5 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 3
         sliding-window-size: 10
         sliding-window-type: COUNT_BASED
+
+getProductByIdUrl: http://localhost:8081/product/getProductById/

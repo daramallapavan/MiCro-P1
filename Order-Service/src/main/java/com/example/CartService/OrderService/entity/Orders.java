@@ -2,9 +2,11 @@ package com.example.CartService.OrderService.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@Builder
 public class Orders {
 
     @Id
@@ -32,6 +35,11 @@ public class Orders {
     private String email;
 
     private String paymentStatus;
+
+    private LocalDateTime createdAt;
+
+
+    private String deliveryBy;
 
     @OneToOne(mappedBy = "orders", cascade = CascadeType.ALL)
     private ShippingAddress shippingAddress;

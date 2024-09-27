@@ -29,6 +29,8 @@ public class OrdersItems {
 
     private double itemTotalPrice;
 
+    private String imageUrl;
+
     private String email;
 
 

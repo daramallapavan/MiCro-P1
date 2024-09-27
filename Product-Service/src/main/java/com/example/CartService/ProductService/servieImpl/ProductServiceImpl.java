@@ -6,8 +6,12 @@ import com.example.CartService.ProductService.dto.ProductDto;
 import com.example.CartService.ProductService.exception.ProductException;
 import com.example.CartService.ProductService.repository.ProductRepository;
 import com.example.CartService.ProductService.service.ProductService;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,8 +22,26 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private ProductRepository productRepository;
+
+    private Cache<String,List<Product>> productListCache;
+
+    private Cache<String,Product> productCache;
+
+    @PostConstruct
+    private void init(){
+        productListCache=  Caffeine.newBuilder()
+                .maximumSize( 100 )
+                .build();
+
+        productCache=  Caffeine.newBuilder()
+                .maximumSize( 100 )
+                .build();
+    }
+
     @Override
-    public String createProduct(ProductDto productDto) {
+    public Product createProduct(ProductDto productDto) {
+   //    productCache.invalidate( "product" );
+        productListCache.invalidate( "productList" );
 
         Optional<Product> existedProduct=productRepository.findByProductName(productDto.getProductName());
         if (existedProduct.isPresent()){
@@ -33,16 +55,26 @@ public class ProductServiceImpl implements ProductService {
         Product product=Product.builder()
                 .productName(productDto.getProductName() )
                 .price( productDto.getPrice() )
+                .imageUrl( productDto.getImageUrl() )
                 .quantity( productDto.getQuantity() )
                 .build();
 
-        productRepository.save( product );
+        Product savedProduct = productRepository.save( product );
 
-        return "product created successfully with "+productDto.getProductName();
+
+
+        return savedProduct;
     }
 
     @Override
     public List<Product> getAllProducts(){
+
+        if (productListCache.getIfPresent( "productList" )!=null){
+           List<Product> productList= productListCache.getIfPresent( "productList" );
+            System.out.println("getting products from cache");
+           return productList;
+        }
+
         List<Product> productList= productRepository.findAll();
         if (productList.isEmpty()){
             try {
@@ -51,13 +83,43 @@ public class ProductServiceImpl implements ProductService {
                 throw new RuntimeException( e );
             }
         }
+
+
+        if (productList.size()!=0){
+            productListCache.put( "productList" ,productList);
+        }
+
+        System.out.println("getting products from database");
+
         return productList;
+
+    }
+
+    @Override
+    public List<Product> getAllProducts(String field) {
+        List<Product> all = productRepository.findAll( Sort.by( field ) );
+        return all;
     }
 
     @Override
     public Product getProductByProductName(String productName) {
+
+        if (productCache.getIfPresent( "product" )!=null){
+           Product productDataFromCache= productCache.getIfPresent( "product" );
+
+           if (productDataFromCache.getProductName().equals( productName )){
+               System.out.println("getting data from product cache");
+               return productDataFromCache;
+           }
+
+
+        }
         Optional<Product> product= productRepository.findByProductName( productName );
         if (product.isPresent()){
+
+            productCache.put( "product",product.get() );
+
+            System.out.println("getting product from database");
            return product.get();
         }
         try {
@@ -70,6 +132,10 @@ public class ProductServiceImpl implements ProductService {
     @SneakyThrows
     @Override
     public String updateProduct(ProductUpdateDto productUpdateDto) {
+
+
+        productListCache.invalidate( "productList" );
+
         Optional<Product> productOptional = productRepository.findByProductName( productUpdateDto.getProductName() );
 
         if (productOptional.isEmpty()){
@@ -88,6 +154,10 @@ public class ProductServiceImpl implements ProductService {
             product.setQuantity( product.getQuantity()- productUpdateDto.getQuantity() );
            Product savedProduct= productRepository.save( product );
 
+
+           productCache.put( "product",savedProduct );
+        System.out.println("product saved in cache");
+
             return "product updated "+productUpdateDto.getProductName()+" "+savedProduct.getQuantity();
 
     }
@@ -95,13 +165,25 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public String delete() {
         productRepository.deleteAll();
+        productCache.invalidate( "product" );
+        productListCache.invalidate( "productList" );
         return "deleted";
     }
 
     @Override
     public String deleteByProduct(String productName) {
         productRepository.deleteByProductName(productName  );
+        productCache.invalidate( "product" );
+        productListCache.invalidate( "productList" );
         return "successfully deleted";
+    }
+
+    @Override
+    public Product getProductByProductId(Long productId)  {
+
+       return productRepository.findById( productId )
+                .orElseThrow(()->new ProductException( "Wrong ProductId" ));
+
     }
 
 

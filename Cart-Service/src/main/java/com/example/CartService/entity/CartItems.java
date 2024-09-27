@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.NonNull;
 
 @Entity
 @Data
@@ -15,7 +16,6 @@ public class CartItems {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "cart_item_id")
     private Long cartItemId;
 
 
@@ -28,10 +28,13 @@ public class CartItems {
     private String productName;
 
 
+    @NonNull
     private String email;
 
     private int quantity;
     private double price;
+
+    private String imageUrl;
 
     private double productTotalPrice;
 

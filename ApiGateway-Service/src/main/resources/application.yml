@@ -2,6 +2,7 @@ spring:
   cloud:
     gateway:
       routes:
+
       - id: Product-Service
         uri: lb://Product-Service
         predicates:
@@ -34,5 +35,24 @@ spring:
         uri: lb://USER-SERVICE
         predicates:
           - Path=/user/**
+
+      - id: Eureka-Service
+        uri: http://localhost:8761
+        predicates:
+          - Path=/eureka/web
+        filters:
+          - SetPath=/
+
+        #Eureka Server Static Resource
+      - id: Eureka-Service-2
+        uri: http://localhost:8761
+        predicates:
+          - Path=/eureka/**
+
+
+
+
+
+
 
 
